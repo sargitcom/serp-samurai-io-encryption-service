@@ -1,0 +1,62 @@
+
+services:
+###> doctrine/doctrine-bundle ###
+  ms-starter-auth-database:
+    container_name: ms-starter-auth-database
+    image: postgres:${POSTGRES_VERSION:-16}-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+      # You should definitely change the password in production
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-!ChangeMe!}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-app}", "-U", "${POSTGRES_USER:-app}"]
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - ms_starter_auth_database_data:/var/lib/postgresql/data:rw
+    networks:
+      - ms-starter-network
+      # You may use a bind-mounted host directory instead, so that it is harder to accidentally remove the volume and lose all your data!
+      # - ./docker/db/data:/var/lib/postgresql/data:rw
+###< doctrine/doctrine-bundle ###
+
+  ms-starter-auth-nginx:
+    container_name: ms-starter-auth-nginx
+    build:
+      context: .
+      dockerfile: ./docker/nginx/Dockerfile
+    ports:
+      - "801:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./:/var/www/html
+    links:
+      - ms-starter-auth-php-fpm
+    networks:
+      - ms-starter-network
+
+  ms-starter-auth-php-fpm:
+    container_name: ms-starter-auth-php-fpm
+    build:
+      context: .
+      dockerfile: ./docker/php-fpm/Dockerfile
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    links:
+      - ms-starter-auth-database
+    networks:
+      - ms-starter-network
+
+volumes:
+###> doctrine/doctrine-bundle ###
+  ms_starter_auth_database_data:
+###< doctrine/doctrine-bundle ###
+
+networks:
+  ms-starter-network:
+    name: ms-starter-network
+    external: true
+
